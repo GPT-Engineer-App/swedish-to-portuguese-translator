@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Box, Heading, Input, Button, Text, VStack, useToast } from "@chakra-ui/react";
+import { Box, Heading, Input, Button, Text, VStack, useToast, Spinner } from "@chakra-ui/react";
 
 const Index = () => {
   const [inputText, setInputText] = useState("");
   const [translation, setTranslation] = useState("");
+  const [exampleSentences, setExampleSentences] = useState([]);
+  const [loading, setLoading] = useState(false);
   const toast = useToast();
 
   const handleTranslation = async () => {
@@ -17,10 +19,16 @@ const Index = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
-      const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(inputText)}&langpair=sv|pt`);
-      const data = await response.json();
-      setTranslation(data.responseData.translatedText);
+      const translationResponse = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(inputText)}&langpair=sv|pt`);
+      const translationData = await translationResponse.json();
+      setTranslation(translationData.responseData.translatedText);
+
+      const examplesResponse = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(translationData.responseData.translatedText)}&langpair=pt|pt&of=json&mt=1`);
+      const examplesData = await examplesResponse.json();
+      setExampleSentences(examplesData.matches.slice(0, 5).map((match) => match.segment));
     } catch (error) {
       toast({
         title: "An error occurred",
@@ -30,6 +38,8 @@ const Index = () => {
         isClosable: true,
       });
     }
+
+    setLoading(false);
   };
 
   return (
@@ -42,10 +52,26 @@ const Index = () => {
         <Button colorScheme="blue" onClick={handleTranslation}>
           Translate
         </Button>
-        {translation && (
-          <Text fontSize="xl" textAlign="center">
-            Translation: {translation}
-          </Text>
+        {loading ? (
+          <Spinner />
+        ) : (
+          <>
+            {translation && (
+              <Text fontSize="xl" textAlign="center">
+                Translation: {translation}
+              </Text>
+            )}
+            {exampleSentences.length > 0 && (
+              <VStack spacing={2} align="start">
+                <Text fontSize="lg" fontWeight="bold">
+                  Example Sentences:
+                </Text>
+                {exampleSentences.map((sentence, index) => (
+                  <Text key={index}>{sentence}</Text>
+                ))}
+              </VStack>
+            )}
+          </>
         )}
       </VStack>
     </Box>
